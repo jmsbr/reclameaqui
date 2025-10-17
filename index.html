@@ -218,7 +218,15 @@
                 const response = await fetch(`${API_URL}?t=${new Date().getTime()}`);
                 if (!response.ok) throw new Error('Falha ao buscar dados');
                 const data = await response.json();
-                complaintsData = Array.isArray(data) ? data : [];
+                const fetchedComplaints = Array.isArray(data) ? data : [];
+
+                // Notifica com som se uma nova reclamação foi adicionada desde a última checagem.
+                // A condição `complaintsData.length > 0` evita o som no primeiro carregamento da página.
+                if (complaintsData.length > 0 && fetchedComplaints.length > complaintsData.length) {
+                    playSound("Uma nova reclamação Reclame Aqui foi registrada.");
+                }
+
+                complaintsData = fetchedComplaints;
                 updateDashboard();
             } catch (error) { console.error("Erro:", error); }
         }
@@ -466,7 +474,7 @@ ${c.detalhe_ticket}
                 const now = new Date();
                 document.getElementById('data_reclamacao').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
                 document.getElementById('hora_reclamacao').value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                playSound("Uma nova reclamação Reclame Aqui foi registrada.");
+                // O som será tocado pela função fetchData para notificar todos os usuários.
                 await fetchData();
             } else {
                 alert("Ocorreu um erro ao enviar a reclamação.");
