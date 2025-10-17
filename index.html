@@ -500,7 +500,7 @@ ${c.detalhe_ticket}
             if (horaInput) horaInput.value = `${hours}:${minutes}`;
 
             setInterval(updateDateTime, 30000); 
-            setInterval(fetchData, 60000); 
+            setInterval(fetchData, 10000); // Atualiza a cada 10 segundos para notificações mais rápidas
         };
     </script>
 </body>
