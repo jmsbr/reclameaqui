@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle - Reclame Aqui v4</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%;
+            width: 100%;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9; /* slate-100 */
+            color: #334155; /* slate-700 */
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #e2e8f0; /* slate-200 */ }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #94a3b8; /* slate-400 */
+            border-radius: 10px;
+        }
+        /* Estilos para o Modal */
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+        }
+        /* Estilos para Impressão */
+        @media print {
+            body {
+                background-color: #fff;
+            }
+            body * {
+                visibility: hidden;
+            }
+            #printable-area, #printable-area * {
+                visibility: visible;
+                color: #000;
+            }
+            #printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 1rem;
+            }
+            .no-print {
+                display: none;
+            }
+            #modal-detalhes {
+                background-color: #f8fafc !important; /* For printing */
+                border: 1px solid #e2e8f0;
+            }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen">
+
+    <div class="flex flex-col h-full w-full">
+        <!-- Cabeçalho Fixo -->
+        <header class="flex-shrink-0 flex justify-between items-center p-4 bg-white border-b border-slate-200">
+            <div class="flex items-center gap-4">
+                <img src="https://www.reclameaqui.com.br/images/ra-favicon.bf3991c3.png" alt="Logo Reclame Aqui" class="h-8" onerror="this.style.display='none'">
+                <img src="https://www.jtexpress.com.br/icons/service-maomao.png" alt="Logo J&T Express" class="h-10" onerror="this.style.display='none'">
+                <h1 class="text-xl font-bold text-slate-800">Painel de Controle de Reclame Aqui</h1>
+            </div>
+            <div id="datetime" class="text-sm text-slate-500 text-right"></div>
+        </header>
+
+        <!-- Conteúdo Principal Rolável -->
+        <main class="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-6 space-y-6">
+            
+            <!-- Cards de Status -->
+            <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div class="bg-white p-4 rounded-lg shadow flex items-center gap-4">
+                    <div class="p-3 bg-cyan-100 rounded-lg text-cyan-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg></div>
+                    <div><p class="font-semibold text-slate-500 text-sm">Total</p><p id="status-total" class="text-2xl font-bold text-slate-800">0</p></div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow flex items-center gap-4">
+                    <div class="p-3 bg-blue-100 rounded-lg text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                    <div><p class="font-semibold text-slate-500 text-sm">Pendentes</p><p id="status-pendentes" class="text-2xl font-bold text-blue-600">0</p></div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow flex items-center gap-4">
+                    <div class="p-3 bg-purple-100 rounded-lg text-purple-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.096 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
+                    <div><p class="font-semibold text-slate-500 text-sm">Em Andamento</p><p id="status-andamento" class="text-2xl font-bold text-purple-600">0</p></div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow flex items-center gap-4">
+                    <div class="p-3 bg-amber-100 rounded-lg text-amber-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div>
+                    <div><p class="font-semibold text-slate-500 text-sm">Em Alerta</p><p id="status-alerta" class="text-2xl font-bold text-amber-600">0</p></div>
+                </div>
+                 <div class="bg-white p-4 rounded-lg shadow flex items-center gap-4">
+                    <div class="p-3 bg-red-100 rounded-lg text-red-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                    <div><p class="font-semibold text-slate-500 text-sm">Vencidos</p><p id="status-vencidos" class="text-2xl font-bold text-red-600">0</p></div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow flex items-center gap-4">
+                    <div class="p-3 bg-green-100 rounded-lg text-green-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                    <div><p class="font-semibold text-slate-500 text-sm">Solucionados</p><p id="status-solucionados" class="text-2xl font-bold text-green-600">0</p></div>
+                </div>
+            </section>
+            
+            <!-- Tabela de Pendentes -->
+            <section id="pendentes-section" class="bg-white p-4 rounded-lg shadow-sm"></section>
+            
+            <!-- Tabela em Andamento -->
+            <section id="andamento-section" class="bg-white p-4 rounded-lg shadow-sm"></section>
+
+            <!-- Tabela em Alerta -->
+            <section id="alerta-section" class="bg-white p-4 rounded-lg shadow-sm"></section>
+            
+            <!-- Tabela Vencidos -->
+            <section id="vencidos-section" class="bg-white p-4 rounded-lg shadow-sm"></section>
+
+            <!-- Tabela Solucionados -->
+            <section id="solucionados-section" class="bg-white p-4 rounded-lg shadow-sm"></section>
+
+            <!-- Formulário de Envio -->
+            <section class="bg-white p-4 rounded-lg shadow-sm">
+                <h2 class="text-lg font-bold text-slate-800 mb-4">📢 Enviar Nova Reclamação</h2>
+                <form id="new-complaint-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                    <div class="lg:col-span-2">
+                        <label for="numero_pedido" class="text-sm font-semibold text-slate-600">Nº do Pedido</label>
+                        <input type="text" id="numero_pedido" name="numero_pedido" required class="mt-1 block w-full bg-slate-50 border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-red-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="nome_embarcador" class="text-sm font-semibold text-slate-600">Embarcador</label>
+                        <input type="text" id="nome_embarcador" name="nome_embarcador" required class="mt-1 block w-full bg-slate-50 border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-red-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="data_reclamacao" class="text-sm font-semibold text-slate-600">Data da Reclamação</label>
+                        <input type="date" id="data_reclamacao" name="data_reclamacao" required class="mt-1 block w-full bg-slate-50 border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-red-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="hora_reclamacao" class="text-sm font-semibold text-slate-600">Horário</label>
+                        <input type="time" id="hora_reclamacao" name="hora_reclamacao" required class="mt-1 block w-full bg-slate-50 border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-red-500 sm:text-sm">
+                    </div>
+
+                    <div>
+                        <label for="rota_pedido" class="text-sm font-semibold text-slate-600">Rota</label>
+                        <input type="text" id="rota_pedido" name="rota_pedido" required class="mt-1 block w-full bg-slate-50 border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-red-500 sm:text-sm">
+                    </div>
+                    <div class="lg:col-span-3">
+                        <label for="detalhe_ticket" class="text-sm font-semibold text-slate-600">Detalhe do Ticket</label>
+                        <textarea id="detalhe_ticket" name="detalhe_ticket" rows="1" required class="mt-1 block w-full bg-slate-50 border border-slate-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-red-500 sm:text-sm"></textarea>
+                    </div>
+                    
+                    <div>
+                        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                            Subir Arquivo
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Modal de Visualização -->
+    <div id="view-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
+        <div class="bg-white w-full max-w-2xl rounded-lg shadow-xl p-6 relative flex flex-col">
+            <div id="printable-area" class="text-slate-800">
+                <h3 class="text-xl font-bold mb-4 border-b border-slate-200 pb-2">Detalhes da Reclamação</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <p><strong>ID:</strong> <span id="modal-id"></span></p>
+                    <p><strong>Data de Envio:</strong> <span id="modal-data"></span></p>
+                    <p><strong>Nº Pedido:</strong> <span id="modal-pedido"></span></p>
+                    <p><strong>Embarcador:</strong> <span id="modal-embarcador"></span></p>
+                    <p><strong>Rota:</strong> <span id="modal-rota"></span></p>
+                    <p><strong>Status:</strong> <span id="modal-status"></span></p>
+                </div>
+                <div class="mt-4">
+                    <p class="font-bold">Detalhes:</p>
+                    <p id="modal-detalhes" class="mt-1 p-3 bg-slate-50 rounded-md whitespace-pre-wrap border border-slate-200"></p>
+                </div>
+            </div>
+            <div class="mt-6 flex gap-4 justify-end no-print">
+                <button id="close-modal-btn" class="bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition">Fechar</button>
+                <button id="download-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition">Baixar Declaração</button>
+                <button id="print-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">Imprimir / Salvar PDF</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        const API_URL = 'https://api.npoint.io/807b6b6d6f954e8c9a80';
+        const PRAZO_HORAS = 24;
+        const ALERTA_HORAS = 18;
+        let complaintsData = [];
+        let lastStatus = {};
+
+        // --- LÓGICA E STATUS ---
+        function getStatus(complaint) {
+            if (complaint.status === 'solucionado') return { text: 'Solucionado', color: 'bg-green-100 text-green-800', value: 5 };
+            if (complaint.status === 'em_andamento') return { text: 'Em Andamento', color: 'bg-purple-100 text-purple-800', value: 3 };
+            
+            // Se o status for 'pendente' ou não definido, calcula pelo tempo
+            const horasPassadas = (new Date() - new Date(complaint.dataEnvio)) / 36e5;
+            if (horasPassadas >= PRAZO_HORAS) return { text: 'Vencido', color: 'bg-red-100 text-red-800', value: 1 };
+            if (horasPassadas >= ALERTA_HORAS) return { text: 'Em Alerta', color: 'bg-amber-100 text-amber-800', value: 2 };
+            return { text: 'Pendente', color: 'bg-blue-100 text-blue-800', value: 4 };
+        }
+
+        function calcularPrazoFinal(dataEnvioStr) {
+            const dataEnvio = new Date(dataEnvioStr);
+            const prazoFinal = new Date(dataEnvio.getTime() + PRAZO_HORAS * 36e5);
+            return prazoFinal.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'});
+        }
+
+        // --- API ---
+        async function fetchData() {
+            try {
+                const response = await fetch(`${API_URL}?t=${new Date().getTime()}`);
+                if (!response.ok) throw new Error('Falha ao buscar dados');
+                const data = await response.json();
+                complaintsData = Array.isArray(data) ? data : [];
+                updateDashboard();
+            } catch (error) { console.error("Erro:", error); }
+        }
+
+        async function postData(updatedData) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+                return response.ok;
+            } catch (error) {
+                console.error("Erro ao postar dados:", error);
+                return false;
+            }
+        }
+
+        async function addNewComplaint(newComplaint) {
+            const currentData = await(await fetch(API_URL)).json() || [];
+            const updatedData = Array.isArray(currentData) ? [...currentData, newComplaint] : [newComplaint];
+            return await postData(updatedData);
+        }
+
+        async function deleteComplaint(id) {
+            if (!confirm('Tem certeza que deseja excluir esta reclamação? A ação não pode ser desfeita.')) return;
+            const updatedData = complaintsData.filter(c => c.id !== id);
+            await postData(updatedData);
+            await fetchData();
+        }
+
+
+        async function updateComplaintStatus(id, newStatus) {
+            const complaintIndex = complaintsData.findIndex(c => c.id === id);
+            if (complaintIndex === -1) return;
+            complaintsData[complaintIndex].status = newStatus;
+            await postData(complaintsData);
+            await fetchData();
+        }
+
+        // --- RENDERIZAÇÃO E UI ---
+        function updateDashboard() {
+            updateStatusCards();
+            renderTables();
+            checkStatusChangesForAlerts();
+        }
+
+        function updateStatusCards() {
+            const counts = { pendentes: 0, andamento: 0, alerta: 0, vencidos: 0, solucionados: 0, total: complaintsData.length };
+            complaintsData.forEach(c => {
+                const s = getStatus(c).text;
+                if (s === 'Pendente') counts.pendentes++;
+                else if (s === 'Em Andamento') counts.andamento++;
+                else if (s === 'Em Alerta') counts.alerta++;
+                else if (s === 'Vencido') counts.vencidos++;
+                else if (s === 'Solucionado') counts.solucionados++;
+            });
+            ['total', 'pendentes', 'andamento', 'alerta', 'vencidos', 'solucionados'].forEach(s => {
+                document.getElementById(`status-${s}`).textContent = counts[s];
+            });
+        }
+        
+        function createTableHTML(title, complaints) {
+            let rows = '';
+            if (complaints.length > 0) {
+                 rows = complaints.map(c => {
+                    const status = getStatus(c);
+                    let actionButtons = `
+                        <button data-id="${c.id}" class="view-btn text-slate-500 hover:text-blue-600" title="Visualizar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C3.732 4.943 7.523 3 10 3s6.268 1.943 9.542 7c-3.274 5.057-7.03 7-9.542 7S3.732 15.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>
+                        </button>`;
+                    
+                    if (status.text === 'Pendente' || status.text === 'Em Alerta') {
+                        actionButtons += `<button data-id="${c.id}" class="start-btn text-slate-500 hover:text-purple-600" title="Iniciar Atendimento"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg></button>`;
+                    }
+
+                    if (status.text !== 'Solucionado') {
+                         actionButtons += `<button data-id="${c.id}" class="solve-btn text-slate-500 hover:text-green-600" title="Marcar como Resolvido"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg></button>`;
+                    }
+                    
+                    actionButtons += `<button data-id="${c.id}" class="delete-btn text-slate-500 hover:text-red-600" title="Excluir"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button>`;
+
+                    return `
+                    <tr class="border-b border-slate-200 hover:bg-slate-50">
+                        <td class="p-3 text-sm">
+                            <div class="font-bold">${c.numero_pedido}</div>
+                            <div class="text-xs text-slate-500">${c.nome_embarcador}</div>
+                        </td>
+                        <td class="p-3 text-sm">${c.rota_pedido}</td>
+                        <td class="p-3 text-sm">${calcularPrazoFinal(c.dataEnvio)}</td>
+                        <td class="p-3 text-sm"><span class="px-2 py-1 text-xs font-semibold rounded-full ${status.color}">${status.text}</span></td>
+                        <td class="p-3 text-sm">
+                            <div class="flex items-center gap-3">${actionButtons}</div>
+                        </td>
+                    </tr>`;
+                }).join('');
+            } else {
+                rows = `<tr><td colspan="5" class="text-center py-4 text-slate-500">Nenhum ticket encontrado.</td></tr>`;
+            }
+
+            return `
+                <h2 class="text-lg font-bold text-slate-800 mb-2">${title}</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 border-b border-slate-200">
+                            <tr>
+                                <th class="p-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Nº Pedido / Embarcador</th>
+                                <th class="p-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Rota</th>
+                                <th class="p-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Prazo Final</th>
+                                <th class="p-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
+                                <th class="p-3 text-xs font-semibold text-slate-600 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+        }
+        
+        function renderTables() {
+            const lists = {
+                pendentes: complaintsData.filter(c => getStatus(c).text === 'Pendente'),
+                andamento: complaintsData.filter(c => getStatus(c).text === 'Em Andamento'),
+                alerta: complaintsData.filter(c => getStatus(c).text === 'Em Alerta'),
+                vencidos: complaintsData.filter(c => getStatus(c).text === 'Vencido'),
+                solucionados: complaintsData.filter(c => getStatus(c).text === 'Solucionado'),
+            };
+
+            document.getElementById('pendentes-section').innerHTML = createTableHTML('Documentos Pendentes', lists.pendentes);
+            document.getElementById('andamento-section').innerHTML = createTableHTML('Documentos em Andamento', lists.andamento);
+            document.getElementById('alerta-section').innerHTML = createTableHTML('Documentos em Alerta', lists.alerta);
+            document.getElementById('vencidos-section').innerHTML = createTableHTML('Documentos Vencidos', lists.vencidos);
+            document.getElementById('solucionados-section').innerHTML = createTableHTML('Documentos Solucionados', lists.solucionados);
+
+            document.querySelectorAll('.start-btn').forEach(b => b.addEventListener('click', e => updateComplaintStatus(e.currentTarget.dataset.id, 'em_andamento')));
+            document.querySelectorAll('.solve-btn').forEach(b => b.addEventListener('click', e => updateComplaintStatus(e.currentTarget.dataset.id, 'solucionado')));
+            document.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', e => openModal(e.currentTarget.dataset.id)));
+            document.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', e => deleteComplaint(e.currentTarget.dataset.id)));
+        }
+
+
+        function updateDateTime() {
+            const el = document.getElementById('datetime');
+            if (!el) return;
+            el.textContent = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full', timeStyle: 'short' }).format(new Date());
+        }
+
+        // --- MODAL ---
+        const modal = document.getElementById('view-modal');
+        function openModal(id) {
+            const c = complaintsData.find(comp => comp.id === id);
+            if (!c) return;
+            modal.dataset.currentId = id; // Store ID for download button
+            document.getElementById('modal-id').textContent = c.id;
+            document.getElementById('modal-data').textContent = new Date(c.dataEnvio).toLocaleString('pt-BR');
+            document.getElementById('modal-pedido').textContent = c.numero_pedido;
+            document.getElementById('modal-embarcador').textContent = c.nome_embarcador;
+            document.getElementById('modal-rota').textContent = c.rota_pedido;
+            document.getElementById('modal-status').innerHTML = `<span class="px-2 py-1 text-xs font-semibold rounded-full ${getStatus(c).color}">${getStatus(c).text}</span>`;
+            document.getElementById('modal-detalhes').textContent = c.detalhe_ticket;
+            modal.classList.remove('hidden');
+        }
+        document.getElementById('close-modal-btn').addEventListener('click', () => modal.classList.add('hidden'));
+        document.getElementById('print-btn').addEventListener('click', () => window.print());
+        
+        function downloadDeclaration(id) {
+            const c = complaintsData.find(comp => comp.id === id);
+            if (!c) return;
+
+            const content = `
+DECLARAÇÃO DE RECLAMAÇÃO - RECLAME AQUI
+----------------------------------------
+ID: ${c.id}
+Data de Envio: ${new Date(c.dataEnvio).toLocaleString('pt-BR')}
+Status: ${getStatus(c).text}
+
+Nº do Pedido: ${c.numero_pedido}
+Embarcador: ${c.nome_embarcador}
+Rota: ${c.rota_pedido}
+
+Detalhes do Ticket:
+${c.detalhe_ticket}
+            `;
+
+            const blob = new Blob([content.trim()], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `declaracao_${c.numero_pedido}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        document.getElementById('download-btn').addEventListener('click', () => {
+            const id = modal.dataset.currentId;
+            if (id) {
+                downloadDeclaration(id);
+            }
+        });
+
+
+        // --- ALERTAS SONOROS ---
+        function playSound(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'pt-BR';
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+        
+        function checkStatusChangesForAlerts() {
+            const currentStatus = {};
+            complaintsData.forEach(c => {
+                const status = getStatus(c).text;
+                currentStatus[c.id] = status;
+                if (lastStatus[c.id] && lastStatus[c.id] !== status && (status === 'Em Alerta' || status === 'Vencido')) {
+                    playSound(`Atenção, reclamação ${c.numero_pedido} está ${status}!`);
+                }
+            });
+            lastStatus = { ...currentStatus };
+        }
+
+        // --- INICIALIZAÇÃO ---
+        document.getElementById('new-complaint-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            const dateValue = formData.get('data_reclamacao'); // YYYY-MM-DD
+            const timeValue = formData.get('hora_reclamacao'); // HH:MM
+            const dataEnvioISO = new Date(`${dateValue}T${timeValue}`).toISOString();
+
+            const newComplaint = {
+                id: `RA-${Date.now()}`,
+                numero_pedido: formData.get('numero_pedido'),
+                nome_embarcador: formData.get('nome_embarcador'),
+                rota_pedido: formData.get('rota_pedido'),
+                detalhe_ticket: formData.get('detalhe_ticket'),
+                dataEnvio: dataEnvioISO,
+                status: 'pendente'
+            };
+            
+            const success = await addNewComplaint(newComplaint);
+            if (success) {
+                this.reset();
+                // Repopula a data e hora após o reset
+                const now = new Date();
+                document.getElementById('data_reclamacao').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                document.getElementById('hora_reclamacao').value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                playSound("Uma nova reclamação Reclame Aqui foi registrada.");
+                await fetchData();
+            } else {
+                alert("Ocorreu um erro ao enviar a reclamação.");
+            }
+        });
+
+        window.onload = function() {
+            updateDateTime();
+            fetchData();
+            
+            // Pre-fill date and time
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+
+            const dataInput = document.getElementById('data_reclamacao');
+            if (dataInput) dataInput.value = `${year}-${month}-${day}`;
+            
+            const horaInput = document.getElementById('hora_reclamacao');
+            if (horaInput) horaInput.value = `${hours}:${minutes}`;
+
+            setInterval(updateDateTime, 30000); 
+            setInterval(fetchData, 60000); 
+        };
+    </script>
+</body>
+</html>
+
