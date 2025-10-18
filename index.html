@@ -70,7 +70,18 @@
                 <img src="https://www.jtexpress.com.br/icons/service-maomao.png" alt="Logo J&T Express" class="h-10" onerror="this.style.display='none'">
                 <h1 class="text-xl font-bold text-slate-800">Painel de Controle de Reclame Aqui</h1>
             </div>
-            <div id="datetime" class="text-sm text-slate-500 text-right"></div>
+             <div class="flex items-center gap-4">
+                <div id="datetime" class="text-sm text-slate-500 text-right"></div>
+                <button id="notifications-btn" class="p-2 rounded-full hover:bg-slate-200 transition" title="Ativar notificações sonoras">
+                    <svg id="bell-muted-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.636 5.636a9 9 0 0112.728 0M18 9v3a6 6 0 01-12 0V9l-2 4h16l-2-4z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18" />
+                    </svg>
+                    <svg id="bell-active-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                </button>
+            </div>
         </header>
 
         <!-- Conteúdo Principal Rolável -->
@@ -193,13 +204,17 @@
         const ALERTA_HORAS = 18;
         let complaintsData = [];
         let lastStatus = {};
+        let isAudioUnlocked = false;
+        let areNotificationsMuted = true;
+        const notificationsBtn = document.getElementById('notifications-btn');
+        const bellMutedIcon = document.getElementById('bell-muted-icon');
+        const bellActiveIcon = document.getElementById('bell-active-icon');
 
         // --- LÓGICA E STATUS ---
         function getStatus(complaint) {
             if (complaint.status === 'solucionado') return { text: 'Solucionado', color: 'bg-green-100 text-green-800', value: 5 };
             if (complaint.status === 'em_andamento') return { text: 'Em Andamento', color: 'bg-purple-100 text-purple-800', value: 3 };
             
-            // Se o status for 'pendente' ou não definido, calcula pelo tempo
             const horasPassadas = (new Date() - new Date(complaint.dataEnvio)) / 36e5;
             if (horasPassadas >= PRAZO_HORAS) return { text: 'Vencido', color: 'bg-red-100 text-red-800', value: 1 };
             if (horasPassadas >= ALERTA_HORAS) return { text: 'Em Alerta', color: 'bg-amber-100 text-amber-800', value: 2 };
@@ -220,8 +235,6 @@
                 const data = await response.json();
                 const fetchedComplaints = Array.isArray(data) ? data : [];
 
-                // Notifica com som se uma nova reclamação foi adicionada desde a última checagem.
-                // A condição `complaintsData.length > 0` evita o som no primeiro carregamento da página.
                 if (complaintsData.length > 0 && fetchedComplaints.length > complaintsData.length) {
                     playSound("Uma nova reclamação Reclame Aqui foi registrada.");
                 }
@@ -428,8 +441,39 @@ ${c.detalhe_ticket}
 
 
         // --- ALERTAS SONOROS ---
+        function setupNotificationControls() {
+            notificationsBtn.addEventListener('click', () => {
+                if (!isAudioUnlocked) {
+                    isAudioUnlocked = true;
+                    areNotificationsMuted = false;
+                    playSound("Alertas sonoros ativados.");
+                } else {
+                    areNotificationsMuted = !areNotificationsMuted;
+                    if (!areNotificationsMuted) {
+                        playSound("Alertas ativados.");
+                    }
+                }
+                updateBellIcon();
+            });
+        }
+
+        function updateBellIcon() {
+            if (areNotificationsMuted) {
+                bellMutedIcon.classList.remove('hidden');
+                bellActiveIcon.classList.add('hidden');
+                notificationsBtn.setAttribute('title', 'Ativar notificações sonoras');
+            } else {
+                bellMutedIcon.classList.add('hidden');
+                bellActiveIcon.classList.remove('hidden');
+                notificationsBtn.setAttribute('title', 'Silenciar notificações sonoras');
+            }
+        }
+
         function playSound(text) {
+            if (!isAudioUnlocked || areNotificationsMuted) return;
+
             if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'pt-BR';
                 window.speechSynthesis.speak(utterance);
@@ -470,11 +514,9 @@ ${c.detalhe_ticket}
             const success = await addNewComplaint(newComplaint);
             if (success) {
                 this.reset();
-                // Repopula a data e hora após o reset
                 const now = new Date();
                 document.getElementById('data_reclamacao').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
                 document.getElementById('hora_reclamacao').value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                // O som será tocado pela função fetchData para notificar todos os usuários.
                 await fetchData();
             } else {
                 alert("Ocorreu um erro ao enviar a reclamação.");
@@ -483,9 +525,9 @@ ${c.detalhe_ticket}
 
         window.onload = function() {
             updateDateTime();
+            setupNotificationControls();
             fetchData();
             
-            // Pre-fill date and time
             const now = new Date();
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -500,7 +542,7 @@ ${c.detalhe_ticket}
             if (horaInput) horaInput.value = `${hours}:${minutes}`;
 
             setInterval(updateDateTime, 30000); 
-            setInterval(fetchData, 10000); // Atualiza a cada 10 segundos para notificações mais rápidas
+            setInterval(fetchData, 10000); 
         };
     </script>
 </body>
