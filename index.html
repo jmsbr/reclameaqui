@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Controle - Reclame Aqui v5 (Firestore)</title>
+    <title>Painel de Controle - Reclame Aqui v6 (npoint.io)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Inter -->
@@ -178,28 +178,9 @@
     </div>
 
 
-    <!-- Firebase SDK -->
     <script type="module">
-        // Importações do Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
-            getAuth, 
-            signInAnonymously, 
-            signInWithCustomToken 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, 
-            doc, 
-            addDoc, 
-            updateDoc, 
-            deleteDoc, 
-            onSnapshot, 
-            collection, 
-            query,
-            setLogLevel
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
         // --- VARIÁVEIS GLOBAIS ---
+        const API_URL = 'https://api.npoint.io/265dc8bf5825450df8d3'; // <-- Seu URL do npoint.io
         const PRAZO_HORAS = 24;
         const ALERTA_HORAS = 18;
         let complaintsData = [];
@@ -207,11 +188,6 @@
         let isAudioUnlocked = false;
         let areNotificationsMuted = true;
         
-        let db;
-        let auth;
-        let complaintsCol;
-        let userId;
-
         const notificationsBtn = document.getElementById('notifications-btn');
         const bellMutedIcon = document.getElementById('bell-muted-icon');
         const bellActiveIcon = document.getElementById('bell-active-icon');
@@ -233,21 +209,18 @@
             return prazoFinal.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'});
         }
 
-        // --- API (FIRESTORE) ---
-        
-        // Esta função agora é o nosso "fetchData" em tempo real
-        function setupRealtimeListener() {
-            if (!db) return;
-            
-            const q = query(complaintsCol);
-            
-            onSnapshot(q, (snapshot) => {
-                const fetchedComplaints = [];
-                snapshot.forEach((doc) => {
-                    fetchedComplaints.push({ id: doc.id, ...doc.data() });
-                });
+        // --- API (NPOINT.IO) ---
+        async function fetchData() {
+            try {
+                // Adiciona um timestamp para evitar cache
+                const response = await fetch(`${API_URL}?t=${new Date().getTime()}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                let fetchedData = await response.json();
+                
+                // Garante que é sempre um array
+                const fetchedComplaints = Array.isArray(fetchedData) ? fetchedData : [];
 
-                // Compara os IDs para detectar novas reclamações
+                 // Compara os IDs para detectar novas reclamações
                 const newIds = fetchedComplaints.map(c => c.id);
                 const oldIds = complaintsData.map(c => c.id);
                 
@@ -259,50 +232,71 @@
                         playSound("Uma nova reclamação Reclame Aqui foi registrada.");
                     }
                 }
-
+                
                 complaintsData = fetchedComplaints;
                 updateDashboard();
-                
-            }, (error) => {
-                console.error("Erro ao ouvir dados do Firestore: ", error);
-            });
+
+            } catch (error) { 
+                console.error("Erro ao buscar dados do npoint.io:", error); 
+                // Considerar se deve limpar `complaintsData` ou mostrar um erro na UI
+                // complaintsData = []; // Descomente se quiser limpar a lista em caso de erro
+                // updateDashboard();
+            }
         }
-        
-        async function addNewComplaint(newComplaint) {
-            if (!db) return false;
+
+        async function postData(updatedData) {
             try {
-                await addDoc(complaintsCol, newComplaint);
-                return true;
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+                return response.ok;
             } catch (error) {
-                console.error("Erro ao adicionar documento: ", error);
+                console.error("Erro ao postar dados no npoint.io:", error);
                 return false;
             }
         }
 
-        async function deleteComplaint(id) {
-            if (!db) return;
-            if (!confirm('Tem certeza que deseja excluir esta reclamação? A ação não pode ser desfeita.')) return;
+        async function addNewComplaint(newComplaint) {
+            // Primeiro, busca os dados atuais para evitar sobrescrever
+            let currentData = [];
             try {
-                await deleteDoc(doc(db, complaintsCol.path, id));
-                // Não precisa de fetchData(), o onSnapshot cuida disso
+                const response = await fetch(`${API_URL}?t=${new Date().getTime()}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    currentData = Array.isArray(data) ? data : [];
+                } else if (response.status !== 404) { // Ignora 404 (bin vazio)
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
             } catch (error) {
-                console.error("Erro ao deletar documento: ", error);
+                console.error("Erro ao buscar dados antes de adicionar:", error);
+                alert("Erro ao conectar com o banco de dados. Tente novamente.");
+                return false; // Impede a adição se não conseguir ler
             }
+            
+            const updatedData = [...currentData, newComplaint];
+            return await postData(updatedData);
         }
 
+        async function deleteComplaint(id) {
+            if (!confirm('Tem certeza que deseja excluir esta reclamação? A ação não pode ser desfeita.')) return;
+            const updatedData = complaintsData.filter(c => c.id !== id);
+            await postData(updatedData);
+            await fetchData(); // Atualiza a UI
+        }
 
         async function updateComplaintStatus(id, newStatus) {
-            if (!db) return;
-            try {
-                const docRef = doc(db, complaintsCol.path, id);
-                await updateDoc(docRef, {
-                    status: newStatus
-                });
-                // Não precisa de fetchData(), o onSnapshot cuida disso
-            } catch (error) {
-                console.error("Erro ao atualizar documento: ", error);
-            }
+            const updatedData = complaintsData.map(c => {
+                if (c.id === id) {
+                    return { ...c, status: newStatus };
+                }
+                return c;
+            });
+            await postData(updatedData);
+            await fetchData(); // Atualiza a UI
         }
+
 
         // --- RENDERIZAÇÃO E UI ---
         function updateDashboard() {
@@ -322,14 +316,18 @@
                 else if (s === 'Solucionado') counts.solucionados++;
             });
             ['total', 'pendentes', 'andamento', 'alerta', 'vencidos', 'solucionados'].forEach(s => {
-                document.getElementById(`status-${s}`).textContent = counts[s];
+                const element = document.getElementById(`status-${s}`);
+                if(element) element.textContent = counts[s];
             });
         }
         
         function createTableHTML(title, complaints) {
             let rows = '';
-            if (complaints.length > 0) {
-                 rows = complaints.map(c => {
+            // Ordena as reclamações pela data de envio (mais recentes primeiro) dentro de cada status
+             const sortedComplaints = complaints.sort((a, b) => new Date(b.dataEnvio) - new Date(a.dataEnvio));
+
+            if (sortedComplaints.length > 0) {
+                 rows = sortedComplaints.map(c => {
                     const status = getStatus(c);
                     let actionButtons = `
                         <button data-id="${c.id}" class="view-btn text-slate-500 hover:text-blue-600" title="Visualizar">
@@ -415,9 +413,11 @@
         function openModal(id) {
             const c = complaintsData.find(comp => comp.id === id);
             if (!c) return;
-            modal.dataset.currentId = id; // Store ID for download button
+            modal.dataset.currentId = id; 
             document.getElementById('modal-id').textContent = c.id;
-            document.getElementById('modal-data').textContent = new Date(c.dataEnvio).toLocaleString('pt-BR');
+            // Verifica se dataEnvio é uma string válida antes de criar o Date
+            const dataEnvioValida = typeof c.dataEnvio === 'string' && c.dataEnvio;
+            document.getElementById('modal-data').textContent = dataEnvioValida ? new Date(c.dataEnvio).toLocaleString('pt-BR') : 'Data inválida';
             document.getElementById('modal-pedido').textContent = c.numero_pedido;
             document.getElementById('modal-embarcador').textContent = c.nome_embarcador;
             document.getElementById('modal-rota').textContent = c.rota_pedido;
@@ -431,22 +431,23 @@
         function downloadDeclaration(id) {
             const c = complaintsData.find(comp => comp.id === id);
             if (!c) return;
+            const dataEnvioValida = typeof c.dataEnvio === 'string' && c.dataEnvio;
             const content = `
 DECLARAÇÃO DE RECLAMAÇÃO - RECLAME AQUI
 ----------------------------------------
-ID: ${c.id}
-Data de Envio: ${new Date(c.dataEnvio).toLocaleString('pt-BR')}
-Status: ${getStatus(c).text}
-Nº do Pedido: ${c.numero_pedido}
-Embarcador: ${c.nome_embarcador}
-Rota: ${c.rota_pedido}
+ID: ${c.id || 'N/A'}
+Data de Envio: ${dataEnvioValida ? new Date(c.dataEnvio).toLocaleString('pt-BR') : 'Data inválida'}
+Status: ${getStatus(c).text || 'N/A'}
+Nº do Pedido: ${c.numero_pedido || 'N/A'}
+Embarcador: ${c.nome_embarcador || 'N/A'}
+Rota: ${c.rota_pedido || 'N/A'}
 Detalhes do Ticket:
-${c.detalhe_ticket}
+${c.detalhe_ticket || 'N/A'}
             `;
             const blob = new Blob([content.trim()], { type: 'text/plain;charset=utf-8' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `declaracao_${c.numero_pedido}.txt`;
+            link.download = `declaracao_${c.numero_pedido || 'sem_numero'}.txt`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -465,7 +466,7 @@ ${c.detalhe_ticket}
                 if (!isAudioUnlocked) {
                     isAudioUnlocked = true;
                     areNotificationsMuted = false;
-                    playSound("Alertas sonoros ativados.");
+                    playSound("Alertas sonoros ativados."); // Toca um som de confirmação
                 } else {
                     areNotificationsMuted = !areNotificationsMuted;
                     if (!areNotificationsMuted) {
@@ -491,7 +492,7 @@ ${c.detalhe_ticket}
         function playSound(text) {
             if (!isAudioUnlocked || areNotificationsMuted) return;
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
+                window.speechSynthesis.cancel(); // Cancela falas anteriores para evitar sobreposição
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'pt-BR';
                 window.speechSynthesis.speak(utterance);
@@ -503,11 +504,12 @@ ${c.detalhe_ticket}
             complaintsData.forEach(c => {
                 const status = getStatus(c).text;
                 currentStatus[c.id] = status;
+                // Só notifica se o status anterior existia e era diferente do atual
                 if (lastStatus[c.id] && lastStatus[c.id] !== status && (status === 'Em Alerta' || status === 'Vencido')) {
                     playSound(`Atenção, reclamação ${c.numero_pedido} está ${status}!`);
                 }
             });
-            lastStatus = { ...currentStatus };
+            lastStatus = { ...currentStatus }; // Atualiza o último estado conhecido
         }
 
         // --- INICIALIZAÇÃO ---
@@ -519,88 +521,54 @@ ${c.detalhe_ticket}
             const dataEnvioISO = new Date(`${dateValue}T${timeValue}`).toISOString();
 
             const newComplaint = {
+                id: `RA-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, // ID único mais robusto
                 numero_pedido: formData.get('numero_pedido'),
                 nome_embarcador: formData.get('nome_embarcador'),
                 rota_pedido: formData.get('rota_pedido'),
                 detalhe_ticket: formData.get('detalhe_ticket'),
                 dataEnvio: dataEnvioISO,
-                status: 'pendente'
+                status: 'pendente' // Status inicial sempre pendente
             };
             
             const success = await addNewComplaint(newComplaint);
             if (success) {
                 this.reset();
+                // Repopula a data e hora após o reset
                 const now = new Date();
                 document.getElementById('data_reclamacao').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
                 document.getElementById('hora_reclamacao').value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                // O onSnapshot vai pegar a mudança e tocar o som para todos
+                // O fetchData() no intervalo vai pegar a nova reclamação e tocar o som
+                await fetchData(); // Força uma atualização imediata para o usuário que enviou
             } else {
-                alert("Ocorreu um erro ao enviar a reclamação.");
+                alert("Ocorreu um erro ao enviar a reclamação. Verifique sua conexão ou tente novamente.");
             }
         });
 
         // Inicialização principal da página
-        async function initializeAppAndAuth() {
-            try {
-                // Variáveis de ambiente (serão injetadas pelo Canvas)
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        window.onload = function() {
+            updateDateTime();
+            setupNotificationControls();
+            fetchData(); // Busca inicial
+            
+            // Preenche data/hora no formulário
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
 
-                if (!firebaseConfig) {
-                    console.error("Configuração do Firebase não encontrada!");
-                    alert("Erro crítico: Configuração do Firebase não encontrada.");
-                    return;
-                }
+            const dataInput = document.getElementById('data_reclamacao');
+            if (dataInput) dataInput.value = `${year}-${month}-${day}`;
+            
+            const horaInput = document.getElementById('hora_reclamacao');
+            if (horaInput) horaInput.value = `${hours}:${minutes}`;
 
-                // Inicializa Firebase
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                setLogLevel('Debug'); // Habilita logs detalhados do Firestore
-
-                // Autenticação
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                
-                userId = auth.currentUser?.uid || `anon-${Math.random().toString(36).substr(2, 9)}`;
-                
-                // Define o caminho da coleção no Firestore
-                // Usando 'public' para que todos os usuários (analistas, supervisores) vejam os mesmos dados
-                complaintsCol = collection(db, 'artifacts', appId, 'public', 'data', 'reclameAqui');
-
-                // Configurações da página
-                updateDateTime();
-                setupNotificationControls();
-                
-                // Preenche data/hora
-                const now = new Date();
-                const year = now.getFullYear();
-                const month = String(now.getMonth() + 1).padStart(2, '0');
-                const day = String(now.getDate()).padStart(2, '0');
-                const hours = String(now.getHours()).padStart(2, '0');
-                const minutes = String(now.getMinutes()).padStart(2, '0');
-                document.getElementById('data_reclamacao').value = `${year}-${month}-${day}`;
-                document.getElementById('hora_reclamacao').value = `${hours}:${minutes}`;
-
-                // Inicia o listener de tempo real
-                setupRealtimeListener();
-
-                // Atualiza o relógio
-                setInterval(updateDateTime, 30000); 
-
-            } catch (error) {
-                console.error("Erro na inicialização:", error);
-                alert("Erro ao carregar o painel. Verifique o console para detalhes.");
-            }
-        }
-
-        // Ponto de entrada
-        window.onload = initializeAppAndAuth;
-
+            // Atualiza o relógio a cada 30 segundos
+            setInterval(updateDateTime, 30000); 
+            // Atualiza os dados do npoint.io a cada 10 segundos
+            setInterval(fetchData, 10000); 
+        };
     </script>
 </body>
 </html>
